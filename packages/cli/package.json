@@ -1,0 +1,18 @@
+{
+    "name": "@shard/cli",
+    "version": "0.0.1",
+    "bin": {
+      "shard": "dist/index.js"
+    },
+    "scripts": {
+      "dev": "tsup src/index.ts --watch",
+      "build": "tsup src/index.ts --dts"
+    },
+    "dependencies": {
+      "@shard/types": "workspace:*"
+    },
+    "devDependencies": {
+      "tsup": "^8.0.0"
+    }
+  }
+  
