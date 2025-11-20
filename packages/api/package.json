@@ -9,6 +9,8 @@
         "migrate": "ts-node-dev src/db/postgres/migrate.ts"
     },
     "dependencies": {
+        "@aws-sdk/client-s3": "^3.936.0",
+        "@fastify/multipart": "^9.3.0",
         "@shard/types": "workspace:*",
         "dotenv": "^17.2.3",
         "fastify": "^5.6.0",

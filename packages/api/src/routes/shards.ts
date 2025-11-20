@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { getDb } from '../db';
+import { uploadBlobToS3 } from '../storage';
 
 export default async function shardRoutes(fastify: FastifyInstance) {
     // GET /api/shards - List all shards
@@ -11,22 +12,26 @@ export default async function shardRoutes(fastify: FastifyInstance) {
     })
 
     // POST /api/publish - Publish a shard
-    fastify.post('/publish', async (request: FastifyRequest<{
-        Body: {
-            namespace: string
-            package: string
-            shard: string
-            version: string
-        }
-    }>, reply: FastifyReply) => {
+    fastify.post('/publish', async (request: FastifyRequest, reply: FastifyReply) => {
         try {
-            fastify.log.info('Publishing shard: ' + request.body.namespace + ', ' + request.body.package + ', ' + request.body.shard + ', ' + request.body.version);
-            const { namespace, package: pkg, shard, version } = request.body;
-            if (!namespace || !pkg || !shard || !version) {
+            const data = await request.file();
+            if (!data) {
+                return { success: false, error: 'Error: No file uploaded' }
+            }
+            const namespace = getFieldValue(data.fields?.namespace) as string;
+            const package_ = getFieldValue(data.fields?.package) as string;
+            const shard = getFieldValue(data.fields?.shard) as string;
+            const version = getFieldValue(data.fields?.version) as string;
+            if (!namespace || !package_ || !shard || !version || !data) {
                 return { success: false, error: 'Error: Missing required fields' }
             }
+            const fileKey = `${namespace}/${package_}/${shard}/${version}.bin`;
+            const uploaded = await uploadBlobToS3(fileKey, data);
+            if (!uploaded) {
+                return { success: false, error: 'Failed to upload shard to S3' }
+            }
             const db = await getDb();
-            const createdShard = await db`INSERT INTO shards (namespace, package, shard, version) VALUES (${namespace}, ${pkg}, ${shard}, ${version})`;
+            const createdShard = await db`INSERT INTO shards (namespace, package, shard, version, s3_id) VALUES (${namespace}, ${package_}, ${shard}, ${version}, ${fileKey})`;
             fastify.log.info('createdShard: ' + JSON.stringify(createdShard));
             return { success: true, shard: createdShard }
         }
@@ -36,3 +41,11 @@ export default async function shardRoutes(fastify: FastifyInstance) {
         }
     })
 }
+
+const getFieldValue = (field: any): string | undefined => {
+    if (!field) return undefined;
+    if (Array.isArray(field)) {
+        return field[0]?.value;
+    }
+    return field.value;
+};

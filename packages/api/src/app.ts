@@ -7,12 +7,14 @@ export async function buildApp() {
   const app = Fastify({
     logger: config.nodeEnv === 'development',
   })
-  
-  // Register routes
-  await registerRoutes(app)
 
   // Register plugins
   await registerPlugins(app)
+
+  // Register routes
+  await registerRoutes(app)
+
+
 
   return app
 }
