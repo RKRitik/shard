@@ -5,8 +5,9 @@ export default async function shardRoutes(fastify: FastifyInstance) {
     // GET /api/shards - List all shards
     fastify.get('/shards', async (request: FastifyRequest, reply: FastifyReply) => {
         const db = await getDb();
-        fastify.log.info(db)
-        return { shards: [] }
+        const shards = await db`SELECT * from shards`;
+        fastify.log.info('fetched shards: ' + JSON.stringify(shards));
+        return { shards }
     })
 
     // POST /api/publish - Publish a shard
@@ -18,8 +19,20 @@ export default async function shardRoutes(fastify: FastifyInstance) {
             version: string
         }
     }>, reply: FastifyReply) => {
-        const { namespace, package: pkg, shard, version } = request.body
-
-        return { success: true, namespace, package: pkg, shard, version }
+        try {
+            fastify.log.info('Publishing shard: ' + request.body.namespace + ', ' + request.body.package + ', ' + request.body.shard + ', ' + request.body.version);
+            const { namespace, package: pkg, shard, version } = request.body;
+            if (!namespace || !pkg || !shard || !version) {
+                return { success: false, error: 'Error: Missing required fields' }
+            }
+            const db = await getDb();
+            const createdShard = await db`INSERT INTO shards (namespace, package, shard, version) VALUES (${namespace}, ${pkg}, ${shard}, ${version})`;
+            fastify.log.info('createdShard: ' + JSON.stringify(createdShard));
+            return { success: true, shard: createdShard }
+        }
+        catch (error) {
+            fastify.log.error('❌ Error publishing shard:' + error)
+            return { success: false, error: 'Failed to publish shard' }
+        }
     })
 }
