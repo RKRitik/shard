@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import { getDb } from '../db';
-import { uploadBlobToS3 } from '../storage';
+import { getBlobFromS3, uploadBlobToS3 } from '../storage';
 
 export default async function shardRoutes(fastify: FastifyInstance) {
     // GET /api/shards - List all shards
@@ -16,14 +16,14 @@ export default async function shardRoutes(fastify: FastifyInstance) {
         try {
             const data = await request.file();
             if (!data) {
-                return { success: false, error: 'Error: No file uploaded' }
+                return reply.status(500).send({ success: false, error: 'Error: No file uploaded' });
             }
             const namespace = getFieldValue(data.fields?.namespace) as string;
             const package_ = getFieldValue(data.fields?.package) as string;
             const shard = getFieldValue(data.fields?.shard) as string;
             const version = getFieldValue(data.fields?.version) as string;
             if (!namespace || !package_ || !shard || !version || !data) {
-                return { success: false, error: 'Error: Missing required fields' }
+                return reply.status(400).send({ success: false, error: 'Error: Missing required fields' });
             }
             const fileKey = `${namespace}/${package_}/${shard}/${version}.bin`;
             const uploaded = await uploadBlobToS3(fileKey, data);
@@ -37,8 +37,28 @@ export default async function shardRoutes(fastify: FastifyInstance) {
         }
         catch (error) {
             fastify.log.error('❌ Error publishing shard:' + error)
-            return { success: false, error: 'Failed to publish shard' }
+            return reply.status(500).send({ success: false, error: 'Failed to publish shard' });
         }
+    })
+
+    // GET /api/shard/:key - Get a shard
+    fastify.post('/shard', async (request: FastifyRequest, reply: FastifyReply) => {
+        const key = JSON.parse(request.body as any)?.key;
+        fastify.log.info('key: ' + key);
+        if (!key) {
+            return reply.status(400).send({ success: false, error: 'Error: Missing required field: key' });
+        }
+        const shardBlob = await getBlobFromS3(key);
+        if (!shardBlob?.Body) {
+            return reply.status(404).send({ success: false, error: 'Shard not found' });
+        }
+        const filename = key.split('/').pop() || 'shard.bin';
+        reply
+            .header('Content-Type', shardBlob.ContentType || 'application/octet-stream')
+            .header('Content-Length', shardBlob.ContentLength?.toString() || '')
+            .header('Content-Disposition', `attachment; filename="${filename}"`); // This triggers download dialog
+
+        return reply.send(shardBlob.Body);
     })
 }
 

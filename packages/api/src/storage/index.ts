@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { MultipartFile } from "@fastify/multipart";
 
 async function blobToBuffer(blob: MultipartFile): Promise<Buffer> {
@@ -31,6 +31,22 @@ export async function uploadBlobToS3(fileKey: string, blob: MultipartFile) {
     return command;
   } catch (error) {
     console.error('error uploading blob to s3', error);
+    return null;
+  }
+}
+
+export async function getBlobFromS3(fileKey: string) {
+  try {
+    const bucketName = process.env.AWS_BUCKET_NAME || "";
+    const command = await s3.send(
+      new GetObjectCommand({
+        Bucket: bucketName,
+        Key: fileKey,
+      })
+    );
+    return command;
+  } catch (error) {
+    console.error('error getting blob from s3', error);
     return null;
   }
 }
