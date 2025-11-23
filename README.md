@@ -4,11 +4,11 @@ A small monorepo where every package stays modular, typed, and actually maintain
 Built with **pnpm workspaces**, **TypeScript**, and a clean build/dev flow for each package.
 
 ## 🧩 Monorepo Structure
-shard/
-packages/
-api/ → Backend (ts-node-dev)
-cli/ → CLI tool (tsup)
-types/ → Shared types (TS build only)
+packages/api/ → Backend (ts-node-dev)
+
+packages/cli/ → CLI tool (tsup)
+
+packages/types/ → Shared types (TS build only)
 
 
 Each package is isolated but fully linked through pnpm workspaces, so imports like `@shard/types` just work.
