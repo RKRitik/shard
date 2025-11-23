@@ -41,7 +41,7 @@ export default async function shardRoutes(fastify: FastifyInstance) {
         }
     })
 
-    // GET /api/shard/:key - Get a shard
+    // GET /api/shard - Get a shard
     fastify.post('/shard', async (request: FastifyRequest, reply: FastifyReply) => {
         const key = JSON.parse(request.body as any)?.key;
         fastify.log.info('key: ' + key);
